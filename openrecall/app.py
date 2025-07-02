@@ -1,4 +1,5 @@
 from threading import Thread
+import os
 
 import numpy as np
 from flask import Flask, render_template_string, request, send_from_directory
@@ -99,7 +100,7 @@ def timeline():
       <div class="slider-value" id="sliderValue">{{timestamps[0] | timestamp_to_human_readable }}</div>
     </div>
     <div class="image-container">
-      <img id="timestampImage" src="/static/{{timestamps[0]}}.webp" alt="Image for timestamp">
+      <img id="timestampImage" src="/static/{{timestamps[0]}}" alt="Image for timestamp">
     </div>
   </div>
   <script>
@@ -112,13 +113,13 @@ def timeline():
       const reversedIndex = timestamps.length - 1 - slider.value;
       const timestamp = timestamps[reversedIndex];
       sliderValue.textContent = new Date(timestamp * 1000).toLocaleString();  // Convert to human-readable format
-      timestampImage.src = `/static/${timestamp}.webp`;
+      timestampImage.src = `/static/${timestamp}`;
     });
 
     // Initialize the slider with a default value
     slider.value = timestamps.length - 1;
     sliderValue.textContent = new Date(timestamps[0] * 1000).toLocaleString();  // Convert to human-readable format
-    timestampImage.src = `/static/${timestamps[0]}.webp`;
+    timestampImage.src = `/static/${timestamps[0]}`;
   </script>
 {% else %}
   <div class="container">
@@ -136,8 +137,22 @@ def timeline():
 @app.route("/search")
 def search():
     q = request.args.get("q")
+    if not q:
+        return render_template_string(
+            """
+{% extends "base_template" %}
+{% block content %}
+    <div class="container">
+        <div class="alert alert-info" role="alert">
+            Please enter a search query.
+        </div>
+    </div>
+{% endblock %}
+""",
+            entries=[],
+        )
     entries = get_all_entries()
-    embeddings = [np.frombuffer(entry.embedding, dtype=np.float64) for entry in entries]
+    embeddings = [np.frombuffer(entry.embedding, dtype=np.float32) for entry in entries]
     query_embedding = get_embedding(q)
     similarities = [cosine_similarity(query_embedding, emb) for emb in embeddings]
     indices = np.argsort(similarities)[::-1]
@@ -153,7 +168,7 @@ def search():
                 <div class="col-md-3 mb-4">
                     <div class="card">
                         <a href="#" data-toggle="modal" data-target="#modal-{{ loop.index0 }}">
-                            <img src="/static/{{ entry['timestamp'] }}.webp" alt="Image" class="card-img-top">
+                            <img src="/static/{{ entry['timestamp'] }}" alt="Image" class="card-img-top">
                         </a>
                     </div>
                 </div>
@@ -161,7 +176,7 @@ def search():
                     <div class="modal-dialog modal-xl" role="document" style="max-width: none; width: 100vw; height: 100vh; padding: 20px;">
                         <div class="modal-content" style="height: calc(100vh - 40px); width: calc(100vw - 40px); padding: 0;">
                             <div class="modal-body" style="padding: 0;">
-                                <img src="/static/{{ entry['timestamp'] }}.webp" alt="Image" style="width: 100%; height: 100%; object-fit: contain; margin: 0 auto;">
+                                <img src="/static/{{ entry['timestamp'] }}" alt="Image" style="width: 100%; height: 100%; object-fit: contain; margin: 0 auto;">
                             </div>
                         </div>
                     </div>
@@ -177,7 +192,17 @@ def search():
 
 @app.route("/static/<filename>")
 def serve_image(filename):
-    return send_from_directory(screenshots_path, filename)
+    # As we don't know the monitor index, we search for the file
+    for i in range(10): # Assumes a maximum of 10 monitors
+        f = f"{filename}_{i}.webp"
+        if os.path.exists(os.path.join(screenshots_path, f)):
+            return send_from_directory(screenshots_path, f)
+
+    # Fallback for old-style filenames
+    if os.path.exists(os.path.join(screenshots_path, f"{filename}.webp")):
+        return send_from_directory(screenshots_path, f"{filename}.webp")
+
+    return "Image not found", 404
 
 
 if __name__ == "__main__":

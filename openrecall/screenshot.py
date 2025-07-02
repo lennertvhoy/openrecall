@@ -39,14 +39,14 @@ def mean_structured_similarity_index(
 
     img1_gray: np.ndarray = rgb2gray(img1)
     img2_gray: np.ndarray = rgb2gray(img2)
-    mu1: float = np.mean(img1_gray)
-    mu2: float = np.mean(img2_gray)
+    mu1: float = float(np.mean(img1_gray))
+    mu2: float = float(np.mean(img2_gray))
     sigma1_sq = np.var(img1_gray)
     sigma2_sq = np.var(img2_gray)
     sigma12 = np.mean((img1_gray - mu1) * (img2_gray - mu2))
-    ssim_index = ((2 * mu1 * mu2 + C1) * (2 * sigma12 + C2)) / (
+    ssim_index: float = float(((2 * mu1 * mu2 + C1) * (2 * sigma12 + C2)) / (
         (mu1**2 + mu2**2 + C1) * (sigma1_sq + sigma2_sq + C2)
-    )
+    ))
     return ssim_index
 
 
@@ -156,50 +156,7 @@ def record_screenshots_thread() -> None:
                     active_app_name: str = get_active_app_name() or "Unknown App"
                     active_window_title: str = get_active_window_title() or "Unknown Title"
                     insert_entry(
-                        text, timestamp, embedding, active_app_name, active_window_title, filename # Pass filename
-                    )
-
-        time.sleep(3) # Wait before taking the next screenshot
-
-    return screenshots
-
-
-def record_screenshots_thread():
-    # TODO: fix the error from huggingface tokenizers
-    import os
-
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-    last_screenshots = take_screenshots()
-
-    while True:
-        if not is_user_active():
-            time.sleep(3)
-            continue
-
-        screenshots = take_screenshots()
-
-        for i, screenshot in enumerate(screenshots):
-
-            last_screenshot = last_screenshots[i]
-
-            if not is_similar(screenshot, last_screenshot):
-                last_screenshots[i] = screenshot
-                image = Image.fromarray(screenshot)
-                timestamp = int(time.time())
-                image.save(
-                    os.path.join(screenshots_path, f"{timestamp}.webp"),
-                    format="webp",
-                    lossless=True,
-                )
-                text: str = extract_text_from_image(current_screenshot)
-                # Only proceed if OCR actually extracts text
-                if text.strip():
-                    embedding: np.ndarray = get_embedding(text)
-                    active_app_name: str = get_active_app_name() or "Unknown App"
-                    active_window_title: str = get_active_window_title() or "Unknown Title"
-                    insert_entry(
-                        text, timestamp, embedding, active_app_name, active_window_title, filename # Pass filename
+                        text, timestamp, embedding, active_app_name, active_window_title
                     )
 
         time.sleep(3) # Wait before taking the next screenshot

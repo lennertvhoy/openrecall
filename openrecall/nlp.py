@@ -1,6 +1,7 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import logging
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -10,9 +11,13 @@ logger = logging.getLogger(__name__)
 MODEL_NAME: str = "all-MiniLM-L6-v2"
 EMBEDDING_DIM: int = 384  # Dimension for all-MiniLM-L6-v2
 
+# Determine device
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+logger.info(f"Using device: {device}")
+
 # Load the model globally to avoid reloading it on every call
 try:
-    model = SentenceTransformer(MODEL_NAME)
+    model = SentenceTransformer(MODEL_NAME, device=device)
     logger.info(f"SentenceTransformer model '{MODEL_NAME}' loaded successfully.")
 except Exception as e:
     logger.error(f"Failed to load SentenceTransformer model '{MODEL_NAME}': {e}")

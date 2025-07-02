@@ -47,7 +47,4 @@ else:
     screenshots_path = os.path.join(appdata_folder, "screenshots")
 
 if not os.path.exists(screenshots_path):
-    try:
-        os.makedirs(screenshots_path)
-    except:
-        pass
+    os.makedirs(screenshots_path)
